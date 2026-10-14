@@ -85,11 +85,15 @@ export default class CodexUsage extends Extension {
             if (open) this._scan();
         });
 
-        // Right of the Claude Usage icon when it's there.
-        const rightBox = Main.panel._rightBox;
+        // Left side, right after Claude Usage and before the workspace
+        // indicator, or at the end if neither is there.
+        const leftBox = Main.panel._leftBox;
         const claude = Main.panel.statusArea['claude-usage@arjun']?.container;
-        const idx = claude?.get_parent() === rightBox ? rightBox.get_children().indexOf(claude) + 1 : 0;
-        Main.panel.addToStatusArea(this.uuid, this._button, idx, 'right');
+        const ws = Main.panel.statusArea['workspace-indicator']?.container;
+        const idx = claude?.get_parent() === leftBox ? leftBox.get_children().indexOf(claude) + 1
+            : ws?.get_parent() === leftBox ? leftBox.get_children().indexOf(ws)
+                : leftBox.get_n_children();
+        Main.panel.addToStatusArea(this.uuid, this._button, idx, 'left');
 
         this._scan();
         this._timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, REFRESH_SECONDS, () => {
