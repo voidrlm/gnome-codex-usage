@@ -45,23 +45,30 @@ function windowTitle(minutes, fallback) {
     return minutes % 1440 === 0 ? `${minutes / 1440}-day limit` : `${Math.round(minutes / 60)}-hour limit`;
 }
 
-// The newest rate-limit snapshot in a log, as {t, primary, secondary}.
-function lastSnapshot(text) {
-    let best = null;
+// The newest rate-limit snapshot in a log, as {t, primary, secondary}, plus
+// when Codex last refused a turn for hitting a limit (0 if never).
+// Snapshots with neither window are skipped: once a limit is hit Codex logs
+// an empty "premium" one that would otherwise blank out the real numbers.
+function parseLog(text) {
+    let best = null, hitAt = 0;
     for (const line of text.split('\n')) {
-        if (!line.includes('"rate_limits"')) continue;
+        const hit = line.includes('"usage_limit_exceeded"');
+        if (!hit && !line.includes('"rate_limits"')) continue;
         let d;
         try {
             d = JSON.parse(line);
         } catch (e) {
             continue;
         }
-        const rl = d.payload?.rate_limits;
         const t = Date.parse(d.timestamp);
-        if (rl && t && (!best || t >= best.t))
+        if (!t) continue;
+        if (d.payload?.error?.codex_error_info === 'usage_limit_exceeded')
+            hitAt = Math.max(hitAt, t);
+        const rl = d.payload?.rate_limits;
+        if (rl && (rl.primary || rl.secondary) && (!best || t >= best.t))
             best = {t, primary: rl.primary ?? null, secondary: rl.secondary ?? null};
     }
-    return best;
+    return {snapshot: best, hitAt};
 }
 
 export default class CodexUsage extends Extension {
@@ -109,11 +116,12 @@ export default class CodexUsage extends Extension {
             const cutoff = Date.now() - KEEP_MS;
             await this._scanDir(Gio.File.new_for_path(sessionsDir()), cutoff, 0);
             if (!this._button) return;
-            let latest = null;
+            let latest = null, hitAt = 0;
             for (const f of this._files.values()) {
                 if (f.snapshot && (!latest || f.snapshot.t > latest.t)) latest = f.snapshot;
+                hitAt = Math.max(hitAt, f.hitAt);
             }
-            this._update(latest);
+            this._update(latest, latest && hitAt > latest.t);
         } catch (e) {
             if (this._button && !e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
                 console.error(`${this.uuid}: ${e}`);
@@ -146,7 +154,7 @@ export default class CodexUsage extends Extension {
                         const path = child.get_path();
                         if (this._files.get(path)?.mtime === mtime) continue;
                         const [bytes] = await child.load_contents_async(this._cancellable);
-                        this._files.set(path, {mtime, snapshot: lastSnapshot(decoder.decode(bytes))});
+                        this._files.set(path, {mtime, ...parseLog(decoder.decode(bytes))});
                     }
                 }
             }
@@ -155,8 +163,16 @@ export default class CodexUsage extends Extension {
         }
     }
 
-    _update(snap) {
+    // limitHit: Codex refused a turn after the snapshot was taken, so the
+    // fuller of the still-open windows is actually used up.
+    _update(snap, limitHit) {
         const now = Date.now();
+        const open = l => l && !(l.resets_at && l.resets_at * 1000 <= now);
+        if (limitHit) {
+            const full = [snap.primary, snap.secondary].filter(open)
+                .sort((a, b) => (b.used_percent ?? 0) - (a.used_percent ?? 0))[0];
+            if (full) snap = {...snap, [full === snap.primary ? 'primary' : 'secondary']: {...full, used_percent: 100}};
+        }
         const limits = [
             [this._primaryRow, snap?.primary, 'Current session'],
             [this._secondaryRow, snap?.secondary, 'This week'],
