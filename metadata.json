@@ -1,0 +1,6 @@
+{
+  "uuid": "codex-usage@arjun",
+  "name": "Codex Usage",
+  "description": "Codex 5-hour and weekly usage limits as a top-bar icon that turns green, yellow or red, read from Codex's local session logs.",
+  "shell-version": ["50"]
+}

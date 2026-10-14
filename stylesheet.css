@@ -1,0 +1,14 @@
+
+.cx-menu { min-width: 420px; }
+.cx-row { spacing: 18px; padding: 6px 0; }
+.cx-text { min-width: 150px; spacing: 2px; }
+.cx-title { font-weight: bold; }
+.cx-sub { font-size: 0.85em; color: rgba(255,255,255,0.55); }
+.cx-pct { min-width: 72px; text-align: right; font-feature-settings: "tnum"; color: rgba(255,255,255,0.75); }
+
+.cx-bar-bg { height: 6px; border-radius: 99px; }
+.cx-bar-fg { height: 6px; border-radius: 99px; }
+.cx-bar-bg.cx-session { background-color: rgba(53,132,228,0.22); }
+.cx-bar-fg.cx-session { background-color: #3584e4; }
+.cx-bar-bg.cx-week { background-color: rgba(245,166,35,0.18); }
+.cx-bar-fg.cx-week { background-color: #f5a623; }
