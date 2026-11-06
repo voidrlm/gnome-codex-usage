@@ -200,7 +200,7 @@ export default class CodexUsage extends Extension {
     _addRow(menu, title, barClass) {
         const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
         const box = new St.BoxLayout({style_class: 'cx-row', x_expand: true});
-        const text = new St.BoxLayout({vertical: true, style_class: 'cx-text', y_align: Clutter.ActorAlign.CENTER});
+        const text = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'cx-text', y_align: Clutter.ActorAlign.CENTER});
         const titleLabel = new St.Label({text: title, style_class: 'cx-title'});
         text.add_child(titleLabel);
         const sub = new St.Label({text: '', style_class: 'cx-sub'});
